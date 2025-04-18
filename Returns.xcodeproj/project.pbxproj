@@ -10,9 +10,22 @@
 		815CE0CC2D6EA3CB0093BB1C /* Returns.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Returns.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		81E095B42D9727B8008CAA1B /* Exceptions for "Returns" folder in "Returns" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 815CE0CB2D6EA3CB0093BB1C /* Returns */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		815CE0CE2D6EA3CB0093BB1C /* Returns */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				81E095B42D9727B8008CAA1B /* Exceptions for "Returns" folder in "Returns" target */,
+			);
 			path = Returns;
 			sourceTree = "<group>";
 		};
@@ -252,8 +265,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Returns/Preview Content\"";
+				DEVELOPMENT_TEAM = H87AHG4SAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Returns/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to take photos of your returns";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need photo library access to add photos to your returns";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -280,8 +297,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Returns/Preview Content\"";
+				DEVELOPMENT_TEAM = H87AHG4SAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Returns/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to take photos of your returns";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need photo library access to add photos to your returns";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
