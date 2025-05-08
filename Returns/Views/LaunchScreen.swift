@@ -28,7 +28,7 @@ struct LaunchScreen: View {
                     .foregroundColor(.white)
                 
                 // Tagline
-                Text("Your money. Returned.")
+                Text("Stop losing your money.")
                     .font(.system(size: 18, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.8))
             }

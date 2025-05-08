@@ -5,11 +5,16 @@
 //  Created by Jonathan Stickney on 2/25/25.
 //
 
-
 import SwiftUI
 
 struct ReturnsListView: View {
-    @StateObject var viewModel = ReturnsViewModel()
+    //@StateObject var viewModel = ReturnsViewModel()
+    @StateObject var viewModel: ReturnsViewModel
+    
+    init(viewModel: ReturnsViewModel = ReturnsViewModel()) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+      }
+    
     @State private var showingAddSheet = false
     
     var body: some View {
@@ -27,17 +32,18 @@ struct ReturnsListView: View {
                                 Text("$\(String(format: "%.2f", item.refundAmount))")
                                     .font(.caption)
                                     .foregroundColor(.gray)
+                                    
+                                    
                                 
                                 Spacer()
-                                
-                                // Dual status indicators
-                                HStack(spacing: 8) {
                                     
                                     // Tracking status - only display if tracking info exists
                                     if let trackingInfo = item.trackingInfo {
                                         Label {
                                             Text(trackingInfo.status.rawValue)
                                                 .font(.caption)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                
                                         } icon: {
                                             Image(systemName: trackingStatusIcon(for: trackingInfo.status))
                                                 .foregroundColor(trackingStatusColor(for: trackingInfo.status))
@@ -50,6 +56,8 @@ struct ReturnsListView: View {
                                     Label {
                                         Text(item.refundStatus.rawValue)
                                             .font(.caption)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            
                                     } icon: {
                                         Image(systemName: "dollarsign.circle.fill")
                                             .foregroundColor(statusColor(for: item.refundStatus))
@@ -59,7 +67,7 @@ struct ReturnsListView: View {
                                     .cornerRadius(4)
                                     
                                   
-                                }
+                                
                             }
                         }
                         .padding(.vertical, 4)
@@ -71,7 +79,8 @@ struct ReturnsListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddSheet = true }) {
-                        Image(systemName: "plus")
+                        Text("Add Return")
+                        //Image(systemName: "plus")
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
