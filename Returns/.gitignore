@@ -6,5 +6,5 @@ xcuserdata/
 *.plist
 
 # Environment variables
-Secrets.xcconfig
-PrivateSecrets.xcconfig
+Secrets.xconfig
+PrivateSecrets.xconfig
