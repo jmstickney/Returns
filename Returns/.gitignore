@@ -8,3 +8,5 @@ Info.plist
 # Environment variables
 **/Secrets*.xconfig
 PrivateSecrets.xconfig
+
+../Returns.zip
