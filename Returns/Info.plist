@@ -4,5 +4,7 @@
 <dict>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>We need to send you reminders about your returns</string>
+	<key>ShippoAPIKey</key>
+	<string>shippo_live_005dcab66bcb0269d57300a4fa7560c2f14dae59</string>
 </dict>
 </plist>

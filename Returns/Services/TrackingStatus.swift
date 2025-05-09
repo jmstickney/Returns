@@ -78,8 +78,13 @@ struct TrackingInfo: Codable {
 class TrackingService {
     static let shared = TrackingService()
     
-    // Replace with your actual Shippo API key
-    private let shippoApiKey = "shippo_live_005dcab66bcb0269d57300a4fa7560c2f14dae59"
+    private let shippoApiKey: String = {
+        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "ShippoAPIKey") as? String,
+              !apiKey.isEmpty else {
+            fatalError("Shippo API key not found. Make sure it's properly configured in your Info.plist.")
+        }
+        return apiKey
+    }()
     
     private let cache = NSCache<NSString, NSData>()
     private let cacheExpirationTime: TimeInterval = 30 * 60 // 30 minutes
@@ -120,6 +125,7 @@ class TrackingService {
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        print("Using Shippo API key: \(shippoApiKey)")
         request.addValue("ShippoToken \(shippoApiKey)", forHTTPHeaderField: "Authorization")
         
         let task = session.dataTask(with: request) { [weak self] data, response, error in

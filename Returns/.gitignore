@@ -1,0 +1,10 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.plist
+
+# Environment variables
+Secrets.xcconfig
+PrivateSecrets.xcconfig
