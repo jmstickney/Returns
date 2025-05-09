@@ -3,8 +3,8 @@ xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
 *.xccheckout
-Returns/info.plist
+info.plist
 
 # Environment variables
-Returns/Secrets.xconfig
-Returns/PrivateSecrets.xconfig
+Secrets.template.xconfig
+/PrivateSecrets.xconfig
