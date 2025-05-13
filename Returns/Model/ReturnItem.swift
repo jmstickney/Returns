@@ -13,7 +13,7 @@ struct ReturnItem: Identifiable, Codable {
     var id = UUID()
     var productName: String
     var retailer: String
-    var returnDate: Date
+    //var returnDate: Date
     var trackingNumber: String?
     var refundAmount: Double
     var refundStatus: RefundStatus
@@ -32,7 +32,7 @@ struct ReturnItem: Identifiable, Codable {
     var lastTracked: Date?
     
     enum CodingKeys: String, CodingKey {
-        case id, productName, retailer, returnDate, trackingNumber, refundAmount, refundStatus, notes
+        case id, productName, retailer, trackingNumber, refundAmount, refundStatus, notes
         case productImageID, returnLabelImageID, packagingImageID, reminders
         case trackingInfo, lastTracked
     }

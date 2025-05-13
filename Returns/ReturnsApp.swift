@@ -40,6 +40,11 @@ struct ReturnsApp: App {
                         .onReceive(refreshTimer) { _ in
                             refreshAllTracking()
                         }
+                    
+                        .onOpenURL { url in
+                                                print("Received URL: \(url)")
+                                                // URL handling for OAuth will be automatic through ASWebAuthenticationSession
+                                            }
 
                     if isShowingSplash {
                         LaunchScreen()

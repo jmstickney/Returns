@@ -43,7 +43,7 @@ struct ReturnDetailView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 DetailRow(title: "Product:", value: item.productName)
                                 DetailRow(title: "Retailer:", value: item.retailer)
-                                DetailRow(title: "Return Date:", value: formattedDate(item.returnDate))
+                                //DetailRow(title: "Return Date:", value: formattedDate(item.returnDate))
                                 DetailRow(title: "Refund Amount:", value: "$\(String(format: "%.2f", item.refundAmount))")
                             }
                             .padding(.vertical, 8)
@@ -263,7 +263,7 @@ struct ImageSectionRow: View {
 // MARK: - Preview
 struct ReturnDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        let sample = ReturnItem(productName: "Headphones", retailer: "Electronics Store", returnDate: Date(), trackingNumber: "1Z999AA10123456784", refundAmount: 79.99, refundStatus: .shipped, notes: "Color was different than expected.")
+        let sample = ReturnItem(productName: "Headphones", retailer: "Electronics Store", trackingNumber: "1Z999AA10123456784", refundAmount: 79.99, refundStatus: .shipped, notes: "Color was different than expected.")
         let vm = ReturnsViewModel()
         return NavigationView { ReturnDetailView(itemID: sample.id, viewModel: vm) }
     }

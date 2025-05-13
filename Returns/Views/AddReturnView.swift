@@ -163,7 +163,7 @@ struct AddReturnView: View {
         var newReturn = ReturnItem(
             productName: productName,
             retailer: retailer,
-            returnDate: returnDate,
+            //returnDate: returnDate,
             trackingNumber: trackingNumber.isEmpty ? nil : trackingNumber,
             refundAmount: amount,
             refundStatus: refundStatus,

@@ -8,34 +8,33 @@
 import SwiftUI
 
 struct ReturnsListView: View {
-    //@StateObject var viewModel = ReturnsViewModel()
     @StateObject var viewModel: ReturnsViewModel
     
     init(viewModel: ReturnsViewModel = ReturnsViewModel()) {
         _viewModel = StateObject(wrappedValue: viewModel)
-      }
+    }
     
     @State private var showingAddSheet = false
+    @State private var isShowingGmailIntegration = false
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(viewModel.returnItems) { item in
-                    NavigationLink(destination: ReturnDetailView(itemID: item.id, viewModel: viewModel)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.productName)
-                                .font(.headline)
-                            Text(item.retailer)
-                                .font(.subheadline)
-                            
-                            HStack {
-                                Text("$\(String(format: "%.2f", item.refundAmount))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    
-                                    
+            VStack {
+                List {
+                    ForEach(viewModel.returnItems) { item in
+                        NavigationLink(destination: ReturnDetailView(itemID: item.id, viewModel: viewModel)) {
+                            VStack(alignment: .leading, spacing: 4) {
+//                                Text(item.productName)
+//                                    .font(.headline)
+                                Text(item.retailer)
+                                    .font(.headline)
                                 
-                                Spacer()
+                                HStack {
+                                    Text("$\(String(format: "%.2f", item.refundAmount))")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    
+                                    Spacer()
                                     
                                     // Tracking status - only display if tracking info exists
                                     if let trackingInfo = item.trackingInfo {
@@ -52,6 +51,7 @@ struct ReturnsListView: View {
                                         .background(trackingStatusColor(for: trackingInfo.status).opacity(0.2))
                                         .cornerRadius(4)
                                     }
+                                    
                                     // Refund status
                                     Label {
                                         Text(item.refundStatus.rawValue)
@@ -65,30 +65,85 @@ struct ReturnsListView: View {
                                     .padding(4)
                                     .background(statusColor(for: item.refundStatus).opacity(0.2))
                                     .cornerRadius(4)
-                                    
-                                  
-                                
+                                }
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
                     }
+                    .onDelete(perform: viewModel.deleteReturn)
                 }
-                .onDelete(perform: viewModel.deleteReturn)
+                
+                // Gmail Connect Button (shown when list is empty)
+                if viewModel.returnItems.isEmpty {
+                    VStack(spacing: 20) {
+                        Spacer()
+                        
+                        Image(systemName: "envelope.badge.shield.half.filled")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+                        
+                        Text("No Returns Yet")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Text("Add returns manually or connect Gmail to automatically find returns from your purchase emails.")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                        
+                        Button(action: {
+                            isShowingGmailIntegration = true
+                        }) {
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                Text("Connect Gmail")
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                }
             }
             .navigationTitle("My Returns")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddSheet = true }) {
                         Text("Add Return")
-                        //Image(systemName: "plus")
                     }
                 }
+                
                 ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton()
+                    HStack {
+                        EditButton()
+                        
+                        // Gmail button in toolbar
+                        if !viewModel.returnItems.isEmpty {
+                            Button(action: {
+                                isShowingGmailIntegration = true
+                            }) {
+                                Image(systemName: "envelope.badge")
+                            }
+                        }
+                    }
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
                 AddReturnView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $isShowingGmailIntegration) {
+                NavigationView {
+                    GmailIntegrationView(viewModel: viewModel)
+                        .navigationTitle("Gmail Integration")
+                        .navigationBarItems(trailing: Button("Done") {
+                            isShowingGmailIntegration = false
+                        })
+                }
             }
         }
     }

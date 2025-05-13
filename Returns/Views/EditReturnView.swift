@@ -16,7 +16,7 @@ struct EditReturnView: View {
     
     @State private var productName: String
     @State private var retailer: String
-    @State private var returnDate: Date
+    //@State private var returnDate: Date
     @State private var trackingNumber: String
     @State private var refundAmount: String
     @State private var refundStatus: RefundStatus
@@ -32,7 +32,7 @@ struct EditReturnView: View {
         // Initialize state variables with item's values
         _productName = State(initialValue: item.productName)
         _retailer = State(initialValue: item.retailer)
-        _returnDate = State(initialValue: item.returnDate)
+        //_returnDate = State(initialValue: item.returnDate)
         _trackingNumber = State(initialValue: item.trackingNumber ?? "")
         _refundAmount = State(initialValue: String(format: "%.2f", item.refundAmount))
         _refundStatus = State(initialValue: item.refundStatus)
@@ -45,7 +45,7 @@ struct EditReturnView: View {
                 Section(header: Text("Product Information")) {
                     TextField("Product Name", text: $productName)
                     TextField("Retailer", text: $retailer)
-                    DatePicker("Return Date", selection: $returnDate, displayedComponents: .date)
+                    //DatePicker("Return Date", selection: $returnDate, displayedComponents: .date)
                 }
                 
                 Section(header: Text("Return Details")) {
@@ -110,7 +110,7 @@ struct EditReturnView: View {
         var updatedItem = item
         updatedItem.productName = productName
         updatedItem.retailer = retailer
-        updatedItem.returnDate = returnDate
+        //updatedItem.returnDate = returnDate
         updatedItem.trackingNumber = trackingNumber.isEmpty ? nil : trackingNumber
         updatedItem.refundAmount = amount
         updatedItem.refundStatus = refundStatus
