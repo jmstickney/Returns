@@ -78,7 +78,7 @@ struct ReturnsListView: View {
                     VStack(spacing: 20) {
                         Spacer()
                         
-                        Image(systemName: "envelope.badge.shield.half.filled")
+                        Image(systemName: "plus")
                             .font(.system(size: 60))
                             .foregroundColor(.blue)
                         
@@ -86,7 +86,7 @@ struct ReturnsListView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("Add returns manually or connect Gmail to automatically find returns from your purchase emails.")
+                        Text("Add returns manually ☝️ or scan your email.")
                             .multilineTextAlignment(.center)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)

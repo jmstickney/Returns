@@ -11,6 +11,7 @@ import SwiftUI
 struct ReturnsApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var viewModel = ReturnsViewModel()
+    @StateObject private var onboardingManager = OnboardingManager()
     @State private var isShowingSplash = true
     @Environment(\.scenePhase) private var scenePhase
     private let refreshTimer = Timer.publish(every: 300, on: .main, in: .common)
@@ -51,6 +52,12 @@ struct ReturnsApp: App {
                             .transition(.opacity)
                             .zIndex(1)
                     }
+                    // Onboarding overlay
+                                    if !isShowingSplash && onboardingManager.showOnboarding {
+                                        OnboardingView(onboardingManager: onboardingManager)
+                                            .transition(.opacity)
+                                            .zIndex(2)
+                                    }
                 }
             }
         }
