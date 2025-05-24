@@ -15,7 +15,7 @@ class OnboardingManager: ObservableObject {
     
     init() {
         // Check if user has completed onboarding before
-        self.showOnboarding = !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        self.showOnboarding = true //!UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         self.hasRequestedNotificationPermission = UserDefaults.standard.bool(forKey: "hasRequestedNotificationPermission")
     }
     
