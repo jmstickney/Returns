@@ -5,7 +5,6 @@
 //  Created by Jonathan Stickney on 3/28/25.
 //
 
-
 import SwiftUI
 
 struct ReminderSectionView: View {
@@ -57,7 +56,7 @@ struct ReminderSectionView: View {
                         
                         // Delete button
                         Button(action: {
-                            viewModel.deleteReminder(itemID: itemID, reminderID: reminder.id)
+                            viewModel.deleteReminderWithNotifications(itemID: itemID, reminderID: reminder.id)
                         }) {
                             Image(systemName: "trash")
                                 .foregroundColor(.red)
@@ -108,7 +107,7 @@ struct ReminderSectionView: View {
                     
                     Button("Save Reminder") {
                         if !reminderMessage.isEmpty {
-                            _ = viewModel.addReminder(
+                            _ = viewModel.addReminderWithNotifications(
                                 for: itemID,
                                 date: reminderDate,
                                 message: reminderMessage
@@ -128,13 +127,11 @@ struct ReminderSectionView: View {
     }
 }
 
-struct ReminderSectionView_Previews: PreviewProvider {
-    static var previews: some View {
-        let viewModel = ReturnsViewModel()
-        let sampleItemID = UUID()
-        
-        return ReminderSectionView(viewModel: viewModel, itemID: sampleItemID)
-            .previewLayout(.sizeThatFits)
-            .padding()
-    }
+#Preview {
+    let viewModel = ReturnsViewModel()
+    let sampleItemID = UUID()
+    
+    return ReminderSectionView(viewModel: viewModel, itemID: sampleItemID)
+        .previewLayout(.sizeThatFits)
+        .padding()
 }

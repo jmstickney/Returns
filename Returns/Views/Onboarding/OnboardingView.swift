@@ -66,20 +66,20 @@ struct OnboardingView: View {
                 ForEach(0..<pages.count, id: \.self) { index in
                     VStack(spacing: 20) {
                         // Skip button at top right (except on first and last pages)
-                        if index > 0 && index < pages.count - 1 {
-                            HStack {
-                                Spacer()
-                                Button(action: {
-                                    onboardingManager.completeOnboarding()
-                                }) {
-                                    Text("Skip")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                                .padding(.trailing, 20)
-                                .padding(.top, 20)
-                            }
-                        }
+//                        if index > 0 && index < pages.count - 1 {
+//                            HStack {
+//                                Spacer()
+//                                Button(action: {
+//                                    onboardingManager.completeOnboarding()
+//                                }) {
+//                                    Text("Skip")
+//                                        .font(.subheadline)
+//                                        .foregroundColor(.white.opacity(0.8))
+//                                }
+//                                .padding(.trailing, 20)
+//                                .padding(.top, 20)
+//                            }
+//                        }
                         
                         Spacer()
                         

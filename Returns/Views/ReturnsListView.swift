@@ -10,9 +10,12 @@ import SwiftUI
 struct ReturnsListView: View {
     @StateObject var viewModel: ReturnsViewModel
     @StateObject private var tutorialManager = TutorialManager()
+    @StateObject private var gmailAuthManager = GmailAuthManager.shared
     
     @State private var showingAddSheet = false
     @State private var isShowingGmailIntegration = false
+    @State private var animateAddButton = false
+    @State private var animateGmailButton = false
     
     init(viewModel: ReturnsViewModel = ReturnsViewModel()) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -73,50 +76,79 @@ struct ReturnsListView: View {
                         .onDelete(perform: viewModel.deleteReturn)
                     }
                     
-                    // Gmail Connect Button (shown when list is empty)
-                    if viewModel.returnItems.isEmpty {
-                        VStack(spacing: 20) {
-                            Spacer()
-                            
-                            Button(action: {
-                                showingAddSheet = true
-                            }) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 60))
-                                    .foregroundColor(.blue)
-                            }
-                            
-                            Text("No Returns Yet")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
-                            Text("Add returns manually ☝️ or scan your email.")
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal)
-                            
-                            Button(action: {
-                                isShowingGmailIntegration = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "envelope.fill")
-                                    Text("Connect Gmail")
+                    // Gmail scan section - always show at bottom
+                    VStack(spacing: 16) {
+                        if viewModel.returnItems.isEmpty {
+                            // Empty state content
+                            VStack(spacing: 20) {
+                                Button(action: {
+                                    showingAddSheet = true
+                                }) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.blue)
                                 }
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
+                                
+                                Text("No Returns Yet")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                
                             }
-                            .padding(.top)
-                            // Highlight Gmail button during tutorial
-                            .scaleEffect(tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .connectGmail ? 1.1 : 1.0)
-                            .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true),
-                                     value: tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .connectGmail)
-                            
-                            Spacer()
+                        } else {
+                            // When list has items, show smaller section
+                            VStack(spacing: 12) {
+                                Text("Find More Returns")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                
+                                Text("Scan your email to automatically discover more returns.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
                         }
-                        .padding()
+                        
+                        // Gmail button - always visible
+                        Button(action: {
+                            isShowingGmailIntegration = true
+                        }) {
+                            HStack {
+                                Image(systemName: gmailAuthManager.isAuthenticated ? "magnifyingglass" : "envelope.fill")
+                                Text(gmailAuthManager.isAuthenticated ? "Scan Emails for Returns" : "Connect Gmail")
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        // Highlight Gmail button during tutorial
+                        .scaleEffect(animateGmailButton ? 1.1 : 1.0)
+                        .animation(animateGmailButton ? .easeInOut(duration: 1).repeatForever(autoreverses: true) : .default, value: animateGmailButton)
+                        
+                        // Show connection status if authenticated
+                        if gmailAuthManager.isAuthenticated {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Gmail Connected")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    if let email = gmailAuthManager.userEmail {
+                                        Text(email)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        }
                     }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                    .padding(.bottom)
                 }
                 .navigationTitle("My Returns")
                 .toolbar {
@@ -127,28 +159,12 @@ struct ReturnsListView: View {
                             Text("Add Return")
                         }
                         // Highlight Add Return button during tutorial
-                        .scaleEffect(tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .addReturn ? 1.1 : 1.0)
-                        .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true),
-                                 value: tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .addReturn)
+                        .scaleEffect(animateAddButton ? 1.1 : 1.0)
+                        .animation(animateAddButton ? .easeInOut(duration: 1).repeatForever(autoreverses: true) : .default, value: animateAddButton)
                     }
                     
                     ToolbarItem(placement: .navigationBarLeading) {
-                        HStack {
-                            EditButton()
-                            
-                            // Gmail button in toolbar
-                            if !viewModel.returnItems.isEmpty {
-                                Button(action: {
-                                    isShowingGmailIntegration = true
-                                }) {
-                                    Image(systemName: "envelope.badge")
-                                }
-                                // Highlight Gmail toolbar button during tutorial (when list has items)
-                                .scaleEffect(tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .connectGmail ? 1.1 : 1.0)
-                                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true),
-                                         value: tutorialManager.showTutorial && tutorialManager.currentTutorialStep == .connectGmail)
-                            }
-                        }
+                        EditButton()
                     }
                 }
                 .sheet(isPresented: $showingAddSheet) {
@@ -164,9 +180,24 @@ struct ReturnsListView: View {
                     }
                 }
                 .onAppear {
-                    // Only start tutorial after onboarding is complete
+                    // Check for tutorial on every appear (for existing users)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         tutorialManager.startTutorialAfterOnboarding()
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .onboardingCompleted)) { _ in
+                    // Tutorial should start when onboarding completes (for new users)
+                    print("📢 Received onboarding completed notification")
+                    tutorialManager.startTutorialWhenReady()
+                }
+                .onChange(of: tutorialManager.currentStep) { step in
+                    // Control button animations based on tutorial step
+                    updateButtonAnimations()
+                }
+                .onChange(of: tutorialManager.showTutorial) { showing in
+                    // Stop all animations when tutorial ends
+                    if !showing {
+                        stopAllAnimations()
                     }
                 }
                 
@@ -178,7 +209,32 @@ struct ReturnsListView: View {
         }
     }
     
-    // Your existing helper functions remain the same...
+    // MARK: - Tutorial Animation Control
+    private func updateButtonAnimations() {
+        // Stop all animations first
+        stopAllAnimations()
+        
+        // Start appropriate animation based on current step
+        if tutorialManager.showTutorial {
+            switch tutorialManager.currentTutorialStep {
+            case .addReturn:
+                animateAddButton = true
+            case .connectGmail:
+                animateGmailButton = true
+            default:
+                break
+            }
+        }
+    }
+    
+    private func stopAllAnimations() {
+        withAnimation(.easeOut(duration: 0.3)) {
+            animateAddButton = false
+            animateGmailButton = false
+        }
+    }
+    
+    // MARK: - Helper Functions
     func statusColor(for status: RefundStatus) -> Color {
         switch status {
         case .pending: return .orange

@@ -5,7 +5,6 @@
 //  Created by Jonathan Stickney on 2/25/25.
 //
 
-
 import SwiftUI
 
 struct AddReturnView: View {
@@ -32,12 +31,34 @@ struct AddReturnView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     
+    // Field validation states
+    @State private var productNameError = false
+    @State private var refundAmountError = false
+    
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Product Information")) {
-                    TextField("Product Name", text: $productName)
+                    // Product Name (Required)
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Product Name *", text: $productName)
+                            .background(productNameError ? Color.red.opacity(0.1) : Color.clear)
+                            .cornerRadius(8)
+                            .onChange(of: productName) { _ in
+                                if productNameError && !productName.isEmpty {
+                                    productNameError = false
+                                }
+                            }
+                        
+                        if productNameError {
+                            Text("Product name is required")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
                     TextField("Retailer", text: $retailer)
+                    
                     DatePicker("Return Date", selection: $returnDate, displayedComponents: .date)
                 }
                 
@@ -46,8 +67,29 @@ struct AddReturnView: View {
                         get: { trackingNumber },
                         set: { trackingNumber = $0.uppercased() }
                     ))
-                    TextField("Refund Amount", text: $refundAmount)
-                        .keyboardType(.decimalPad)
+                    
+                    // Refund Amount (Required)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("$")
+                                .foregroundColor(.secondary)
+                            TextField("Refund Amount *", text: $refundAmount)
+                                .keyboardType(.decimalPad)
+                                .background(refundAmountError ? Color.red.opacity(0.1) : Color.clear)
+                                .cornerRadius(8)
+                                .onChange(of: refundAmount) { _ in
+                                    if refundAmountError && !refundAmount.isEmpty {
+                                        refundAmountError = false
+                                    }
+                                }
+                        }
+                        
+                        if refundAmountError {
+                            Text("Valid refund amount is required")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
                     
                     Picker("Status", selection: $refundStatus) {
                         ForEach(RefundStatus.allCases) { status in
@@ -87,6 +129,18 @@ struct AddReturnView: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
                 }
+                
+                // Required fields notice
+                Section {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(.blue)
+                        Text("Fields marked with * are required")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             .navigationTitle("Add Return")
             .navigationBarItems(
@@ -96,8 +150,10 @@ struct AddReturnView: View {
                 trailing: Button("Save") {
                     saveReturn()
                 }
+                .fontWeight(.semibold)
+                .foregroundColor(canSave() ? .blue : .gray)
             )
-            .alert("Error", isPresented: $showAlert) {
+            .alert("Missing Information", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
@@ -124,6 +180,34 @@ struct AddReturnView: View {
         }
     }
     
+    // MARK: - Validation Methods
+    
+    private func canSave() -> Bool {
+        return !productName.isEmpty && !refundAmount.isEmpty && Double(refundAmount) != nil
+    }
+    
+    private func validateFields() -> Bool {
+        var isValid = true
+        
+        // Reset error states
+        productNameError = false
+        refundAmountError = false
+        
+        // Validate product name
+        if productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            productNameError = true
+            isValid = false
+        }
+        
+        // Validate refund amount
+        if refundAmount.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || Double(refundAmount) == nil || Double(refundAmount)! <= 0 {
+            refundAmountError = true
+            isValid = false
+        }
+        
+        return isValid
+    }
+    
     private func getImageBindingForType() -> Binding<UIImage?> {
         guard let type = selectedImageType else {
             return Binding<UIImage?>.constant(nil)
@@ -140,34 +224,29 @@ struct AddReturnView: View {
     }
     
     private func saveReturn() {
-        // Validate inputs
-        guard !productName.isEmpty else {
-            alertMessage = "Please enter a product name"
+        // Validate all fields
+        guard validateFields() else {
+            // Show specific error message
+            if productNameError {
+                alertMessage = "Please enter a product name"
+            } else if refundAmountError {
+                alertMessage = "Please enter a valid refund amount"
+            }
             showAlert = true
             return
         }
         
-        guard !retailer.isEmpty else {
-            alertMessage = "Please enter a retailer name"
-            showAlert = true
-            return
-        }
-        
-        guard let amount = Double(refundAmount) else {
-            alertMessage = "Please enter a valid refund amount"
-            showAlert = true
-            return
-        }
+        // Convert refund amount (we know it's valid from validation)
+        let amount = Double(refundAmount)!
         
         // Create the return item
         var newReturn = ReturnItem(
-            productName: productName,
-            retailer: retailer,
-            //returnDate: returnDate,
-            trackingNumber: trackingNumber.isEmpty ? nil : trackingNumber,
+            productName: productName.trimmingCharacters(in: .whitespacesAndNewlines),
+            retailer: retailer.trimmingCharacters(in: .whitespacesAndNewlines),
+            trackingNumber: trackingNumber.isEmpty ? nil : trackingNumber.trimmingCharacters(in: .whitespacesAndNewlines),
             refundAmount: amount,
             refundStatus: refundStatus,
-            notes: notes.isEmpty ? nil : notes
+            notes: notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         
         // Add the return to get an ID assigned
@@ -242,8 +321,6 @@ struct ImagePickerRow: View {
     }
 }
 
-struct AddReturnView_Previews: PreviewProvider {
-    static var previews: some View {
-        AddReturnView(viewModel: ReturnsViewModel())
-    }
+#Preview {
+    AddReturnView(viewModel: ReturnsViewModel())
 }

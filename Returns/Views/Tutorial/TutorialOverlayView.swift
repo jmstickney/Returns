@@ -1,6 +1,8 @@
 //
-//  TutorialView.swift
+//  TutorialOverlay.swift
 //  Returns
+//
+//  Created by Jonathan Stickney on 5/21/25.
 //
 
 import SwiftUI
@@ -30,26 +32,9 @@ struct TutorialOverlay: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                     
-                    // Show arrows for button highlighting steps
+                    // Show content for button highlighting steps
                     if tutorialManager.currentTutorialStep == .addReturn {
                         VStack(spacing: 12) {
-                            HStack {
-                                Spacer()
-                                VStack {
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.title)
-                                        .foregroundColor(.blue)
-                                        .scaleEffect(1.0 + sin(Date().timeIntervalSince1970 * 3) * 0.2)
-                                        .animation(.easeInOut(duration: 1).repeatForever(), value: UUID())
-                                    
-                                    Text("Here!")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                        .fontWeight(.medium)
-                                }
-                                .offset(x: -20, y: -30)
-                            }
-                            
                             Button(tutorialManager.currentTutorialStep.buttonText) {
                                 tutorialManager.nextStep()
                             }
@@ -61,23 +46,6 @@ struct TutorialOverlay: View {
                         }
                     } else if tutorialManager.currentTutorialStep == .connectGmail {
                         VStack(spacing: 12) {
-                            HStack {
-                                VStack {
-                                    Image(systemName: "arrow.down")
-                                        .font(.title)
-                                        .foregroundColor(.blue)
-                                        .scaleEffect(1.0 + sin(Date().timeIntervalSince1970 * 3) * 0.2)
-                                        .animation(.easeInOut(duration: 1).repeatForever(), value: UUID())
-                                    
-                                    Text("Or here!")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                        .fontWeight(.medium)
-                                }
-                                .offset(y: 40)
-                                Spacer()
-                            }
-                            
                             Button(tutorialManager.currentTutorialStep.buttonText) {
                                 tutorialManager.nextStep()
                             }

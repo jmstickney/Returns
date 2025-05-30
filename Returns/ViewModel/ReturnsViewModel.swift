@@ -15,7 +15,7 @@ class ReturnsViewModel: ObservableObject {
     }
     
     private let imageManager = ImageManager.shared
-    private let reminderManager = ReminderManager.shared
+    //private let reminderManager = ReminderManager.shared
     
     init() {
         loadReturns()
@@ -62,7 +62,9 @@ class ReturnsViewModel: ObservableObject {
             if let pid = item.productImageID { imageManager.deleteImage(withID: pid) }
             if let rid = item.returnLabelImageID { imageManager.deleteImage(withID: rid) }
             if let pkg = item.packagingImageID { imageManager.deleteImage(withID: pkg) }
-            item.reminders.forEach { reminderManager.cancelReminder($0) }
+            
+            // Use NotificationManager instead of ReminderManager
+            item.reminders.forEach { NotificationManager.shared.cancelReminder($0) }
         }
         returnItems.remove(atOffsets: offsets)
     }
@@ -152,7 +154,10 @@ class ReturnsViewModel: ObservableObject {
     ) -> Bool {
         guard let idx = returnItems.firstIndex(where: { $0.id == itemID }) else { return false }
         var reminder = ReturnReminder(returnItemID: itemID, reminderDate: date, message: message)
-        reminder = reminderManager.scheduleReminder(reminder, productName: returnItems[idx].productName)
+        
+        // Use NotificationManager instead of ReminderManager
+        NotificationManager.shared.scheduleReminder(reminder, productName: returnItems[idx].productName)
+        
         returnItems[idx].reminders.append(reminder)
         return true
     }
@@ -160,7 +165,10 @@ class ReturnsViewModel: ObservableObject {
     func deleteReminder(itemID: UUID, reminderID: UUID) {
         guard let idx = returnItems.firstIndex(where: { $0.id == itemID }),
               let ridx = returnItems[idx].reminders.firstIndex(where: { $0.id == reminderID }) else { return }
-        reminderManager.cancelReminder(returnItems[idx].reminders[ridx])
+        
+        // Use NotificationManager instead of ReminderManager
+        NotificationManager.shared.cancelReminder(returnItems[idx].reminders[ridx])
+        
         returnItems[idx].reminders.remove(at: ridx)
     }
     
@@ -183,5 +191,88 @@ class ReturnsViewModel: ObservableObject {
         } else {
             returnItems = []
         }
+    }
+}
+//
+//  Add this extension to your existing ReturnsViewModel.swift file
+//
+
+extension ReturnsViewModel {
+    
+    // MARK: - Enhanced Tracking with Notifications
+    
+    func updateTrackingWithNotifications(for itemID: UUID, completion: @escaping (Result<TrackingInfo, Error>) -> Void) {
+        guard let idx = returnItems.firstIndex(where: { $0.id == itemID }),
+              let trackingNumber = returnItems[idx].trackingNumber,
+              !trackingNumber.isEmpty else {
+            completion(.failure(NSError(domain: "ReturnsTracker", code: 1,
+                                        userInfo: [NSLocalizedDescriptionKey: "No tracking number available"])))
+            return
+        }
+        
+        let previousStatus = returnItems[idx].trackingInfo?.status
+        
+        TrackingService.shared.fetchTrackingInfo(trackingNumber: trackingNumber) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let info):
+                    self.updateReturnItem(withID: itemID) { item in
+                        item.trackingInfo = info
+                        item.lastTracked = Date()
+                        if info.status == .delivered && item.refundStatus == .shipped {
+                            item.refundStatus = .received
+                        }
+                    }
+                    
+                    // Send notification if status changed
+                    if let previousStatus = previousStatus, previousStatus != info.status {
+                        NotificationManager.shared.scheduleTrackingStatusNotification(
+                            for: self.returnItems[idx],
+                            newStatus: info.status,
+                            oldStatus: previousStatus
+                        )
+                    }
+                    
+                    completion(.success(info))
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+    
+    // Add automatic deadline notifications when creating returns
+    func addReturnWithNotifications(item: ReturnItem) {
+        returnItems.append(item)
+        
+        // Schedule automatic deadline notifications
+        NotificationManager.shared.scheduleReturnDeadlineNotifications(for: item)
+    }
+    
+    // Updated reminder methods to use NotificationManager
+    func addReminderWithNotifications(
+        for itemID: UUID,
+        date: Date,
+        message: String
+    ) -> Bool {
+        guard let idx = returnItems.firstIndex(where: { $0.id == itemID }) else { return false }
+        var reminder = ReturnReminder(returnItemID: itemID, reminderDate: date, message: message)
+        
+        // Use NotificationManager instead of ReminderManager
+        NotificationManager.shared.scheduleReminder(reminder, productName: returnItems[idx].productName)
+        
+        returnItems[idx].reminders.append(reminder)
+        return true
+    }
+    
+    func deleteReminderWithNotifications(itemID: UUID, reminderID: UUID) {
+        guard let idx = returnItems.firstIndex(where: { $0.id == itemID }),
+              let ridx = returnItems[idx].reminders.firstIndex(where: { $0.id == reminderID }) else { return }
+        
+        // Use NotificationManager instead of ReminderManager
+        NotificationManager.shared.cancelReminder(returnItems[idx].reminders[ridx])
+        
+        returnItems[idx].reminders.remove(at: ridx)
     }
 }

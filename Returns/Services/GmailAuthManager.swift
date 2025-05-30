@@ -39,6 +39,10 @@ class GmailAuthManager: ObservableObject {
     private init() {
         loadTokensFromKeychain()
         setupTokenRefresh()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.logTokenState()
+            }
     }
     
     // MARK: - Public Methods
@@ -246,7 +250,18 @@ class GmailAuthManager: ObservableObject {
                         .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
                 }
         }
+    // Add this to your existing GmailAuthManager for debugging
+    private func logTokenState() {
+        print("🔍 Token Debug Info:")
+        print("  - Has Access Token: \(accessToken != nil)")
+        print("  - Has Refresh Token: \(refreshToken != nil)")
+        print("  - Token Expires: \(tokenExpirationDate?.description ?? "nil")")
+        print("  - Is Authenticated: \(isAuthenticated)")
+        print("  - User Email: \(userEmail ?? "nil")")
     }
+    }
+
+
 
     // MARK: - Supporting Types
     struct TokenResponse: Decodable {
@@ -260,3 +275,4 @@ class GmailAuthManager: ObservableObject {
             case refreshToken = "refresh_token"
         }
     }
+

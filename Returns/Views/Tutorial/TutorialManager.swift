@@ -1,3 +1,10 @@
+//
+//  TutorialManager.swift
+//  Returns
+//
+//  Created by Jonathan Stickney on 5/21/25.
+//
+
 import SwiftUI
 
 class TutorialManager: ObservableObject {
@@ -58,9 +65,21 @@ class TutorialManager: ObservableObject {
         let onboardingComplete = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         let tutorialComplete = UserDefaults.standard.bool(forKey: "tutorial_completed")
         
+        print("🎯 Tutorial Check - Onboarding Complete: \(onboardingComplete), Tutorial Complete: \(tutorialComplete)")
+        
         if onboardingComplete && !tutorialComplete {
             currentStep = 0
             showTutorial = true
+            print("✅ Starting tutorial")
+        } else {
+            print("❌ Tutorial not started - Onboarding: \(onboardingComplete ? "✅" : "❌"), Tutorial: \(tutorialComplete ? "already done" : "not done")")
+        }
+    }
+    
+    func startTutorialWhenReady() {
+        // This method can be called from the onboarding completion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.startTutorialAfterOnboarding()
         }
     }
     
@@ -82,4 +101,3 @@ class TutorialManager: ObservableObject {
         UserDefaults.standard.set(true, forKey: "tutorial_completed")
     }
 }
-    
