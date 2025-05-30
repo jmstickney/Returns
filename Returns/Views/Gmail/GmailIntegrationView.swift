@@ -5,8 +5,6 @@
 //  Created by Jonathan Stickney on 5/9/25.
 //
 
-
-// GmailIntegrationView.swift
 import SwiftUI
 import Combine
 
@@ -82,10 +80,10 @@ struct GmailIntegrationView: View {
             // Potential Returns List
             if !potentialReturns.isEmpty {
                 List {
-                        // Sort returns by EMAIL date (newest first) rather than return date
-                        ForEach(potentialReturns.sorted(by: { $0.emailDate > $1.emailDate }), id: \.id) { potentialReturn in
-                            PotentialReturnRow(potentialReturn: potentialReturn, viewModel: viewModel)
-                        }
+                    // Sort returns by EMAIL date (newest first) rather than return date
+                    ForEach(potentialReturns.sorted(by: { $0.emailDate > $1.emailDate }), id: \.id) { potentialReturn in
+                        PotentialReturnRow(potentialReturn: potentialReturn, viewModel: viewModel)
+                    }
                 }
             } else if isScanning {
                 ProgressView("Scanning your emails...")
@@ -176,7 +174,7 @@ struct PotentialReturnRow: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Text(potentialReturn.emailSubject)
+                Text(cleanedSubject)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -239,6 +237,48 @@ struct PotentialReturnRow: View {
         }
     }
     
+    // Clean the subject text for display
+    private var cleanedSubject: String {
+        return cleanText(potentialReturn.emailSubject)
+    }
+    
+    private func cleanText(_ text: String) -> String {
+        var cleaned = text
+        
+        // Decode HTML entities
+        cleaned = decodeHtmlEntities(cleaned)
+        
+        // Remove excessive whitespace
+        cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return cleaned
+    }
+    
+    private func decodeHtmlEntities(_ text: String) -> String {
+        var decoded = text
+        
+        let htmlEntities: [String: String] = [
+            "&amp;": "&",
+            "&lt;": "<",
+            "&gt;": ">",
+            "&quot;": "\"",
+            "&apos;": "'",
+            "&nbsp;": " ",
+            "&#39;": "'",
+            "&#x27;": "'",
+            "&hellip;": "…",
+            "&mdash;": "—",
+            "&ndash;": "–"
+        ]
+        
+        for (entity, replacement) in htmlEntities {
+            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
+        }
+        
+        return decoded
+    }
+    
     private func addToReturns() {
         guard !isAdding && !isAlreadyAdded else { return }
         
@@ -282,7 +322,7 @@ struct EmailPreviewView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     // Email header
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(potentialReturn.emailSubject)
+                        Text(cleanedSubject)
                             .font(.headline)
                         
                         Text("From: \(potentialReturn.retailer)")
@@ -297,17 +337,18 @@ struct EmailPreviewView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
                     
-                    // Email snippet
+                    // Email snippet with proper escaping
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Email Preview")
                             .font(.headline)
                         
-                        Text(potentialReturn.emailSnippet)
+                        Text(cleanedSnippet)
                             .font(.body)
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(.systemGray5))
                             .cornerRadius(8)
+                            .textSelection(.enabled) // Allow text selection for easier reading
                     }
                     
                     // Return details
@@ -315,7 +356,7 @@ struct EmailPreviewView: View {
                         Text("Return Details")
                             .font(.headline)
                         
-                        EmailDetailRow(label: "Product", value: potentialReturn.productName)
+                        EmailDetailRow(label: "Product", value: cleanedProductName)
                         EmailDetailRow(label: "Retailer", value: potentialReturn.retailer)
                         EmailDetailRow(label: "Amount", value: "$\(String(format: "%.2f", potentialReturn.refundAmount))")
                     }
@@ -330,22 +371,119 @@ struct EmailPreviewView: View {
             })
         }
     }
+    
+    // MARK: - Text Cleaning Methods
+    
+    private var cleanedSubject: String {
+        return cleanText(potentialReturn.emailSubject)
+    }
+    
+    private var cleanedSnippet: String {
+        return cleanText(potentialReturn.emailSnippet)
+    }
+    
+    private var cleanedProductName: String {
+        return cleanText(potentialReturn.productName)
+    }
+    
+    private func cleanText(_ text: String) -> String {
+        var cleaned = text
+        
+        // Decode HTML entities
+        cleaned = decodeHtmlEntities(cleaned)
+        
+        // Remove excessive whitespace and newlines
+        cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\n+", with: "\n", options: .regularExpression)
+        
+        // Trim whitespace
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return cleaned
+    }
+    
+    private func decodeHtmlEntities(_ text: String) -> String {
+        var decoded = text
+        
+        // Common HTML entities
+        let htmlEntities: [String: String] = [
+            "&amp;": "&",
+            "&lt;": "<",
+            "&gt;": ">",
+            "&quot;": "\"",
+            "&apos;": "'",
+            "&nbsp;": " ",
+            "&hellip;": "\u{2026}", // …
+            "&mdash;": "\u{2014}",  // —
+            "&ndash;": "\u{2013}",  // –
+            "&ldquo;": "\u{201C}",  // "
+            "&rdquo;": "\u{201D}",  // "
+            "&lsquo;": "\u{2018}",  // '
+            "&rsquo;": "\u{2019}",  // '
+            "&bull;": "\u{2022}",   // •
+            "&middot;": "\u{00B7}", // ·
+            "&copy;": "\u{00A9}",   // ©
+            "&reg;": "\u{00AE}",    // ®
+            "&trade;": "\u{2122}"   // ™
+        ]
+        
+        for (entity, replacement) in htmlEntities {
+            decoded = decoded.replacingOccurrences(of: entity, with: replacement)
+        }
+        
+        // Decode numeric HTML entities (&#123; and &#x1F;)
+        decoded = decodeNumericHtmlEntities(decoded)
+        
+        return decoded
+    }
+    
+    private func decodeNumericHtmlEntities(_ text: String) -> String {
+        var result = text
+        
+        // Handle decimal entities (&#123;)
+        while let range = result.range(of: #"&#\d+;"#, options: .regularExpression) {
+            let match = String(result[range])
+            let numberString = String(match.dropFirst(2).dropLast(1))
+            
+            if let number = Int(numberString), let scalar = UnicodeScalar(number) {
+                result.replaceSubrange(range, with: String(Character(scalar)))
+            } else {
+                // If we can't convert, just remove the entity to prevent infinite loop
+                result.replaceSubrange(range, with: "")
+            }
+        }
+        
+        // Handle hexadecimal entities (&#x1F;)
+        while let range = result.range(of: #"&#x[0-9A-Fa-f]+;"#, options: .regularExpression) {
+            let match = String(result[range])
+            let hexString = String(match.dropFirst(3).dropLast(1))
+            
+            if let number = Int(hexString, radix: 16), let scalar = UnicodeScalar(number) {
+                result.replaceSubrange(range, with: String(Character(scalar)))
+            } else {
+                // If we can't convert, just remove the entity to prevent infinite loop
+                result.replaceSubrange(range, with: "")
+            }
+        }
+        
+        return result
+    }
 }
 
-// Helper view for the detail rows
+// Enhanced EmailDetailRow with better text handling
 struct EmailDetailRow: View {
     let label: String
     let value: String
     
     var body: some View {
-        HStack(alignment: .top) {
-            Text(label + ":")
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-                .frame(width: 80, alignment: .leading)
             
             Text(value)
                 .font(.subheadline)
+                .textSelection(.enabled) // Allow text selection
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
