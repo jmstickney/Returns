@@ -1,18 +1,19 @@
-//
-//  AppDelegate.swift
-//  Returns
-//
-//  Created by Jonathan Stickney on 3/28/25.
-//
-
 import UIKit
 import UserNotifications
 import BackgroundTasks
+import Combine
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+
+    static var shared: AppDelegate? {
+            return UIApplication.shared.delegate as? AppDelegate
+        }
+    // MARK: - Properties
+    private var cancellables = Set<AnyCancellable>()
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        // In AppDelegate.swift or ReturnsApp.swift init
+        // Debug Info.plist
+        print("📱 App Launch - Info.plist Debug:")
         print("All Info.plist keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "none")")
         print("Shippo API Key: \(Bundle.main.object(forInfoDictionaryKey: "ShippoAPIKey") ?? "not found")")
         
@@ -22,168 +23,296 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Setup notification categories
         NotificationManager.shared.setupNotificationCategories()
         
+        // Check background refresh status
+        checkBackgroundRefreshStatus()
+        
         // Register background tasks
         registerBackgroundTasks()
         
         return true
     }
     
-    // MARK: - Background App Refresh
+    // MARK: - Background App Refresh Status Check
     
-    private func registerBackgroundTasks() {
-        // Register background app refresh task
-        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.jstick.Returns.refresh", using: nil) { task in
-            print("🔄 BACKGROUND TASK IS RUNNING: \(Date())")
-            self.handleAppRefresh(task: task as! BGAppRefreshTask)
-        }
+    private func checkBackgroundRefreshStatus() {
+        let status = UIApplication.shared.backgroundRefreshStatus
         
-        print("🔧 Background task registration: \(registered ? "SUCCESS" : "FAILED")")
+        switch status {
+        case .available:
+            print("✅ Background App Refresh: Available")
+        case .denied:
+            print("❌ Background App Refresh: Denied by user - Background tasks will not work")
+        case .restricted:
+            print("❌ Background App Refresh: Restricted by system")
+        @unknown default:
+            print("❓ Background App Refresh: Unknown status")
+        }
     }
     
+    // MARK: - Background Task Registration
+    
+    private func registerBackgroundTasks() {
+        let identifier = "com.jstick.Returns.refresh"
+        
+        let registered = BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: identifier,
+            using: nil
+        ) { task in
+            print("🔄 BACKGROUND TASK TRIGGERED: \(Date())")
+            print("📋 Task identifier: \(task.identifier)")
+            
+            // Safe casting with proper error handling
+            guard let appRefreshTask = task as? BGAppRefreshTask else {
+                print("❌ Wrong task type received: \(type(of: task))")
+                task.setTaskCompleted(success: false)
+                return
+            }
+            
+            self.handleAppRefresh(task: appRefreshTask)
+        }
+        
+        print("🔧 Background task registration (\(identifier)): \(registered ? "✅ SUCCESS" : "❌ FAILED")")
+        
+        if !registered {
+            print("💡 Check Info.plist for BGTaskSchedulerPermittedIdentifiers")
+        }
+    }
+    
+    // MARK: - App Lifecycle Events
+    
     func applicationDidEnterBackground(_ application: UIApplication) {
+        print("📱 App entered background - scheduling refresh task")
         scheduleAppRefresh()
     }
     
+    func applicationWillEnterForeground(_ application: UIApplication) {
+        print("📱 App entering foreground")
+        checkPendingBackgroundTasks()
+    }
+    
+    // MARK: - Background Task Scheduling
+    
     private func scheduleAppRefresh() {
-        let request = BGAppRefreshTaskRequest(identifier: "com.jstick.Returns.refresh")
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 1 * 60) // 15 minutes from now
+        let identifier = "com.jstick.Returns.refresh"
+        
+        // Cancel any existing requests first
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
+        
+        let request = BGAppRefreshTaskRequest(identifier: identifier)
+        // Use realistic timing - iOS rarely grants requests shorter than 15 minutes
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
         
         do {
             try BGTaskScheduler.shared.submit(request)
             print("✅ Background refresh task scheduled")
+            print("🕐 Earliest begin date: \(request.earliestBeginDate ?? Date())")
         } catch {
             print("❌ Could not schedule app refresh: \(error)")
+            print("📝 Error details: \(error.localizedDescription)")
+            
+            // Log specific error types for debugging
+            if let bgError = error as? BGTaskScheduler.Error {
+                switch bgError.code {
+                case .unavailable:
+                    print("💡 Background tasks unavailable - check device settings")
+                case .tooManyPendingTaskRequests:
+                    print("💡 Too many pending task requests - app may be over-scheduling")
+                case .notPermitted:
+                    print("💡 Background refresh not permitted by user")
+                default:
+                    print("💡 Unknown BGTaskScheduler error: \(bgError)")
+                }
+            }
         }
     }
     
+    private func checkPendingBackgroundTasks() {
+        BGTaskScheduler.shared.getPendingTaskRequests { requests in
+            DispatchQueue.main.async {
+                print("📋 Pending background tasks: \(requests.count)")
+                for request in requests {
+                    print("  - \(request.identifier): \(request.earliestBeginDate ?? Date())")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Background Task Execution
+    
     private func handleAppRefresh(task: BGAppRefreshTask) {
-        print("🔄 BACKGROUND TASK IS RUNNING: \(Date())")
+        print("🔄 EXECUTING BACKGROUND TASK: \(Date())")
         
-        // Schedule the next background refresh
+        // IMPORTANT: Schedule the next background refresh FIRST
+        // This ensures continuous background refresh capability
         scheduleAppRefresh()
         
-        // Set expiration handler
+        // Set expiration handler - iOS gives limited time for background execution
         task.expirationHandler = {
+            print("⏰ Background task expired - time limit reached")
             task.setTaskCompleted(success: false)
         }
         
-        // Perform background tracking update
-        performBackgroundTrackingUpdate { success in
-            task.setTaskCompleted(success: success)
-        }
-    }
-    
-//    private func performBackgroundTrackingUpdate(completion: @escaping (Bool) -> Void) {
-//        // This would typically access your shared ReturnsViewModel
-//        // For now, we'll simulate the background update
-//        
-//        DispatchQueue.global(qos: .background).async {
-//            // Simulate checking for tracking updates
-//            // In real implementation, you'd:
-//            // 1. Get current return items from persistent storage
-//            // 2. Check tracking status for items that need updates
-//            // 3. Compare with stored status
-//            // 4. Send notifications for any changes
-//            
-//            // Simulate network call
-//            Thread.sleep(forTimeInterval: 2)
-//            
-//            // For demo purposes, randomly decide if there are updates
-//            let hasUpdates = Bool.random()
-//            
-//            if hasUpdates {
-//                // Send notification about updates found
-//                NotificationManager.shared.scheduleBackgroundRefreshNotification()
-//            }
-//            
-//            DispatchQueue.main.async {
-//                completion(true)
-//            }
-//        }
-//    }
-    
-    private func performBackgroundTrackingUpdate(completion: @escaping (Bool) -> Void) {
-        print("🔍 Starting background email scan test...")
-        
-        // Send immediate notification that background task is running
-        let content = UNMutableNotificationContent()
-        content.title = "Background Task Running"
-        content.body = "📧 Checking for new returns in your email..."
-        content.sound = .default
-        
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        let request = UNNotificationRequest(identifier: "bg_scan_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ Failed to send notification: \(error)")
-            } else {
-                print("📬 Sent background scan notification")
+        // Create a work item for our background task
+        let workItem = DispatchWorkItem {
+            self.performBackgroundTrackingUpdate { success in
+                print("📊 Background tracking update completed: \(success ? "✅ SUCCESS" : "❌ FAILED")")
+                task.setTaskCompleted(success: success)
             }
         }
         
-        // Check if Gmail is authenticated
-        if !GmailAuthManager.shared.isAuthenticated {
-            print("❌ Gmail not authenticated, skipping scan")
-            completion(true)
+        // Execute the background work
+        DispatchQueue.global(qos: .background).async(execute: workItem)
+        
+        // Safety timeout - iOS typically gives 30 seconds max for background tasks
+        // We'll use 25 seconds to be safe
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 25) {
+            if !workItem.isCancelled {
+                print("⚠️ Background task taking too long, cancelling...")
+                workItem.cancel()
+                task.setTaskCompleted(success: false)
+            }
+        }
+    }
+    
+    // MARK: - Background Work Implementation (SIMPLIFIED FOR TESTING)
+    
+    private func performBackgroundTrackingUpdate(completion: @escaping (Bool) -> Void) {
+        print("🔍 Starting SIMPLE background email scan test...")
+        
+        // Send immediate notification that background task started
+        sendTestNotification("🚀 Background Task Started", body: "Testing background email scan...")
+        
+        // Check Gmail authentication
+        guard GmailAuthManager.shared.isAuthenticated else {
+            print("❌ Gmail not authenticated")
+            sendTestNotification("❌ Gmail Not Connected", body: "Connect Gmail to test email scanning")
+            completion(false)
             return
         }
         
-        // Perform email scan in background
+        // Perform simple background email scan
         DispatchQueue.global(qos: .background).async {
-            // Simulate email scanning work
-            Thread.sleep(forTimeInterval: 3) // Simulate API call time
+            print("🔄 Performing background email scan...")
             
-            DispatchQueue.main.async {
-                // Send completion notification
-                let completionContent = UNMutableNotificationContent()
-                completionContent.title = "Email Scan Complete"
-                completionContent.body = "📬 Check for new returns found!"
-                completionContent.sound = .default
-                
-                let completionTrigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-                let completionRequest = UNNotificationRequest(
-                    identifier: "bg_complete_\(Date().timeIntervalSince1970)",
-                    content: completionContent,
-                    trigger: completionTrigger
-                )
-                
-                UNUserNotificationCenter.current().add(completionRequest) { error in
-                    if let error = error {
-                        print("❌ Failed to send completion notification: \(error)")
-                    } else {
-                        print("📬 Sent scan completion notification")
+            // Simple email scan test using your existing EmailScannerService
+            EmailScannerService.shared.scanEmailsForReturns()
+                .receive(on: DispatchQueue.main)
+                .sink(
+                    receiveCompletion: { completionResult in
+                        switch completionResult {
+                        case .finished:
+                            print("✅ Email scan completed successfully")
+                        case .failure(let error):
+                            print("❌ Email scan failed: \(error)")
+                            self.sendTestNotification("❌ Email Scan Failed", body: "Error: \(error.localizedDescription)")
+                            completion(false)
+                        }
+                    },
+                    receiveValue: { potentialReturns in
+                        print("📧 Found \(potentialReturns.count) potential returns")
+                        
+                        // Send success notification with results
+                        let title = "✅ Email Scan Complete"
+                        let body = "Found \(potentialReturns.count) potential returns in background"
+                        self.sendTestNotification(title, body: body)
+                        
+                        // Log some details for debugging
+                        for (index, return_item) in potentialReturns.prefix(3).enumerated() {
+                            print("📦 Return \(index + 1): \(return_item.retailer) - $\(return_item.refundAmount)")
+                        }
+                        
+                        completion(true)
                     }
-                }
-                
-                completion(true)
+                )
+                .store(in: &self.cancellables)
+        }
+    }
+    
+    // MARK: - Test Notification Helper
+    
+    private func sendTestNotification(_ title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.badge = NSNumber(value: UIApplication.shared.applicationIconBadgeNumber + 1)
+        
+        // Add timestamp to make each notification unique
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        content.subtitle = "Background Test - \(timestamp)"
+        
+        content.userInfo = [
+            "type": "background_test",
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "bg_test_\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to send test notification: \(error)")
+            } else {
+                print("📬 Sent test notification: \(title)")
             }
         }
     }
     
-    // Handle URL scheme callback for OAuth
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        // Print the URL for debugging
-        print("App opened with URL: \(url.absoluteString)")
+    // MARK: - Debug Methods (Development Only)
+    
+    #if DEBUG
+    func testBackgroundEmailScan() {
+        print("🧪 TESTING BACKGROUND EMAIL SCAN...")
+        performBackgroundTrackingUpdate { success in
+            print("🧪 Test email scan result: \(success ? "✅ SUCCESS" : "❌ FAILED")")
+        }
+    }
+    
+    func forceBackgroundTaskExecution() {
+        print("🔄 Forcing background task execution...")
+        scheduleAppRefresh()
         
-        // The actual handling of the OAuth callback URL will be done by ASWebAuthenticationSession
-        // This method just needs to return true to indicate that your app handled the URL
+        // Send notification that task was scheduled
+        sendTestNotification("📅 Background Task Scheduled", body: "Task will run when iOS decides to execute it")
+    }
+    
+    func cancelAllBackgroundTasks() {
+        BGTaskScheduler.shared.cancelAllTaskRequests()
+        print("🗑️ Cancelled all background tasks")
+    }
+    
+    func getBackgroundTaskStatus() -> String {
+        let status = UIApplication.shared.backgroundRefreshStatus
+        switch status {
+        case .available: return "Available"
+        case .denied: return "Denied"
+        case .restricted: return "Restricted"
+        @unknown default: return "Unknown"
+        }
+    }
+    #endif
+    
+    // MARK: - URL Handling for OAuth
+    
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        print("🔗 App opened with URL: \(url.absoluteString)")
         return true
     }
     
     // MARK: - Notification Delegate Methods
     
-    // This method will be called when a notification is received while the app is in the foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show the notification even when the app is in the foreground
+        // Show notifications even when app is in foreground
         completionHandler([.banner, .sound, .badge])
     }
     
-    // This method will be called when a user taps on a notification
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         
-        // Handle different notification types
         if let notificationType = userInfo["type"] as? String {
             switch notificationType {
             case "tracking_update":
@@ -194,13 +323,17 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                 handleDeadlineNotificationTap(userInfo: userInfo)
             case "background_refresh":
                 handleBackgroundRefreshNotificationTap()
+            case "background_test":
+                handleBackgroundTestNotificationTap(userInfo: userInfo)
             default:
-                break
+                print("📱 Unknown notification type: \(notificationType)")
             }
         }
         
         completionHandler()
     }
+    
+    // MARK: - Notification Tap Handlers
     
     private func handleTrackingNotificationTap(userInfo: [AnyHashable: Any], actionIdentifier: String) {
         guard let itemIDString = userInfo["itemID"] as? String,
@@ -208,12 +341,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         switch actionIdentifier {
         case "MARK_RECEIVED":
-            // Handle marking item as received
-            // You'd typically update the item status here
-            print("Mark as received tapped for item: \(itemID)")
+            print("📱 Mark as received tapped for item: \(itemID)")
         case "VIEW_DETAILS", UNNotificationDefaultActionIdentifier:
-            // Navigate to item details
-            // This would typically use a navigation coordinator or post a notification
             NotificationCenter.default.post(name: .navigateToReturnDetail, object: itemID)
         default:
             break
@@ -235,8 +364,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func handleBackgroundRefreshNotificationTap() {
-        // Navigate to main returns list to show updated information
         NotificationCenter.default.post(name: .refreshReturnsList, object: nil)
+    }
+    
+    private func handleBackgroundTestNotificationTap(userInfo: [AnyHashable: Any]) {
+        print("📱 Background test notification tapped")
+        if let timestamp = userInfo["timestamp"] as? TimeInterval {
+            let date = Date(timeIntervalSince1970: timestamp)
+            print("📱 Test was executed at: \(date)")
+        }
     }
 }
 
