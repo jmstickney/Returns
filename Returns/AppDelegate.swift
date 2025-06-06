@@ -32,9 +32,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     private func registerBackgroundTasks() {
         // Register background app refresh task
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.jstick.Returns.refresh", using: nil) { task in
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.jstick.Returns.refresh", using: nil) { task in
+            print("🔄 BACKGROUND TASK IS RUNNING: \(Date())")
             self.handleAppRefresh(task: task as! BGAppRefreshTask)
         }
+        
+        print("🔧 Background task registration: \(registered ? "SUCCESS" : "FAILED")")
     }
     
     func applicationDidEnterBackground(_ application: UIApplication) {
@@ -43,7 +46,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     private func scheduleAppRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.jstick.Returns.refresh")
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes from now
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 1 * 60) // 15 minutes from now
         
         do {
             try BGTaskScheduler.shared.submit(request)
@@ -54,6 +57,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func handleAppRefresh(task: BGAppRefreshTask) {
+        print("🔄 BACKGROUND TASK IS RUNNING: \(Date())")
+        
         // Schedule the next background refresh
         scheduleAppRefresh()
         
@@ -68,30 +73,89 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
     }
     
+//    private func performBackgroundTrackingUpdate(completion: @escaping (Bool) -> Void) {
+//        // This would typically access your shared ReturnsViewModel
+//        // For now, we'll simulate the background update
+//        
+//        DispatchQueue.global(qos: .background).async {
+//            // Simulate checking for tracking updates
+//            // In real implementation, you'd:
+//            // 1. Get current return items from persistent storage
+//            // 2. Check tracking status for items that need updates
+//            // 3. Compare with stored status
+//            // 4. Send notifications for any changes
+//            
+//            // Simulate network call
+//            Thread.sleep(forTimeInterval: 2)
+//            
+//            // For demo purposes, randomly decide if there are updates
+//            let hasUpdates = Bool.random()
+//            
+//            if hasUpdates {
+//                // Send notification about updates found
+//                NotificationManager.shared.scheduleBackgroundRefreshNotification()
+//            }
+//            
+//            DispatchQueue.main.async {
+//                completion(true)
+//            }
+//        }
+//    }
+    
     private func performBackgroundTrackingUpdate(completion: @escaping (Bool) -> Void) {
-        // This would typically access your shared ReturnsViewModel
-        // For now, we'll simulate the background update
+        print("🔍 Starting background email scan test...")
         
-        DispatchQueue.global(qos: .background).async {
-            // Simulate checking for tracking updates
-            // In real implementation, you'd:
-            // 1. Get current return items from persistent storage
-            // 2. Check tracking status for items that need updates
-            // 3. Compare with stored status
-            // 4. Send notifications for any changes
-            
-            // Simulate network call
-            Thread.sleep(forTimeInterval: 2)
-            
-            // For demo purposes, randomly decide if there are updates
-            let hasUpdates = Bool.random()
-            
-            if hasUpdates {
-                // Send notification about updates found
-                NotificationManager.shared.scheduleBackgroundRefreshNotification()
+        // Send immediate notification that background task is running
+        let content = UNMutableNotificationContent()
+        content.title = "Background Task Running"
+        content.body = "📧 Checking for new returns in your email..."
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "bg_scan_\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to send notification: \(error)")
+            } else {
+                print("📬 Sent background scan notification")
             }
+        }
+        
+        // Check if Gmail is authenticated
+        if !GmailAuthManager.shared.isAuthenticated {
+            print("❌ Gmail not authenticated, skipping scan")
+            completion(true)
+            return
+        }
+        
+        // Perform email scan in background
+        DispatchQueue.global(qos: .background).async {
+            // Simulate email scanning work
+            Thread.sleep(forTimeInterval: 3) // Simulate API call time
             
             DispatchQueue.main.async {
+                // Send completion notification
+                let completionContent = UNMutableNotificationContent()
+                completionContent.title = "Email Scan Complete"
+                completionContent.body = "📬 Check for new returns found!"
+                completionContent.sound = .default
+                
+                let completionTrigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                let completionRequest = UNNotificationRequest(
+                    identifier: "bg_complete_\(Date().timeIntervalSince1970)",
+                    content: completionContent,
+                    trigger: completionTrigger
+                )
+                
+                UNUserNotificationCenter.current().add(completionRequest) { error in
+                    if let error = error {
+                        print("❌ Failed to send completion notification: \(error)")
+                    } else {
+                        print("📬 Sent scan completion notification")
+                    }
+                }
+                
                 completion(true)
             }
         }

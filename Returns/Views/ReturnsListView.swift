@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import BackgroundTasks
 
 struct ReturnsListView: View {
     @StateObject var viewModel: ReturnsViewModel
@@ -108,6 +109,18 @@ struct ReturnsListView: View {
                                     .padding(.horizontal)
                             }
                         }
+                        // Add this button somewhere in your app for testing
+//                        Button("Test Background Schedule") {
+//                            let request = BGAppRefreshTaskRequest(identifier: "com.jstick.Returns.refresh")
+//                            request.earliestBeginDate = Date(timeIntervalSinceNow: 60) // 1 minute
+//                            
+//                            do {
+//                                try BGTaskScheduler.shared.submit(request)
+//                                print("✅ Task scheduled successfully")
+//                            } catch {
+//                                print("❌ Failed to schedule: \(error)")
+//                            }
+//                        }
                         
                         // Gmail button - always visible
                         Button(action: {
@@ -209,6 +222,8 @@ struct ReturnsListView: View {
         }
     }
     
+    
+    
     // MARK: - Tutorial Animation Control
     private func updateButtonAnimations() {
         // Stop all animations first
@@ -266,6 +281,7 @@ struct ReturnsListView: View {
         case .pending: return "clock.fill"
         }
     }
+   
 }
 
 #Preview {

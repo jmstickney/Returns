@@ -17,6 +17,14 @@ struct GmailIntegrationView: View {
     @State private var errorMessage: String?
     @State private var showError = false
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var refreshTrigger = UUID() // Force view refresh when emails are hidden
+    
+    // Filter out hidden emails
+    private var filteredReturns: [PotentialReturn] {
+        return potentialReturns.filter { email in
+            !EmailFilterManager.shared.isEmailHidden(email.emailId)
+        }
+    }
     
     var body: some View {
         VStack {
@@ -77,14 +85,22 @@ struct GmailIntegrationView: View {
                 .disabled(isScanning)
             }
             
-            // Potential Returns List
-            if !potentialReturns.isEmpty {
+            // Potential Returns List with filtering
+            if !filteredReturns.isEmpty {
                 List {
                     // Sort returns by EMAIL date (newest first) rather than return date
-                    ForEach(potentialReturns.sorted(by: { $0.emailDate > $1.emailDate }), id: \.id) { potentialReturn in
-                        PotentialReturnRow(potentialReturn: potentialReturn, viewModel: viewModel)
+                    ForEach(filteredReturns.sorted(by: { $0.emailDate > $1.emailDate }), id: \.id) { potentialReturn in
+                        PotentialReturnRow(
+                            potentialReturn: potentialReturn,
+                            viewModel: viewModel,
+                            onHideEmail: {
+                                // Trigger view refresh when email is hidden
+                                refreshTrigger = UUID()
+                            }
+                        )
                     }
                 }
+                .id(refreshTrigger) // Force List to refresh when refreshTrigger changes
             } else if isScanning {
                 ProgressView("Scanning your emails...")
                     .padding()
@@ -95,9 +111,28 @@ struct GmailIntegrationView: View {
                         .foregroundColor(.gray)
                         .padding()
                     
-                    Text("Connect and scan your Gmail to automatically find returns")
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.secondary)
+                    if potentialReturns.isEmpty {
+                        Text("Connect and scan your Gmail to automatically find returns")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.secondary)
+                    } else {
+                        // All emails are hidden
+                        VStack(spacing: 12) {
+                            Text("All emails are hidden")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("\(EmailFilterManager.shared.hiddenEmailCount()) emails hidden")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Button("Show Hidden Emails") {
+                                EmailFilterManager.shared.clearAllHiddenEmails()
+                                refreshTrigger = UUID() // Refresh view
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    }
                 }
                 .padding()
             }
@@ -105,6 +140,22 @@ struct GmailIntegrationView: View {
             Spacer()
         }
         .navigationTitle("Gmail Integration")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu("Options") {
+                    Button("Rescan Emails") {
+                        scanEmails()
+                    }
+                    
+                    if EmailFilterManager.shared.hiddenEmailCount() > 0 {
+                        Button("Show Hidden (\(EmailFilterManager.shared.hiddenEmailCount()))") {
+                            EmailFilterManager.shared.clearAllHiddenEmails()
+                            refreshTrigger = UUID() // Refresh view when showing hidden emails
+                        }
+                    }
+                }
+            }
+        }
         .alert(isPresented: $showError) {
             Alert(
                 title: Text("Error"),
@@ -138,9 +189,11 @@ struct GmailIntegrationView: View {
 struct PotentialReturnRow: View {
     let potentialReturn: PotentialReturn
     let viewModel: ReturnsViewModel
+    let onHideEmail: () -> Void // Callback to trigger parent view refresh
     
     @State private var isAdding = false
     @State private var showingEmailPreview = false
+    @State private var showingHideConfirmation = false
     
     // Check if this return has already been added
     private var isAlreadyAdded: Bool {
@@ -181,57 +234,79 @@ struct PotentialReturnRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Preview "button" (actually a view with gesture)
-            VStack(spacing: 2) {
-                Image(systemName: "envelope.open")
-                    .font(.system(size: 16))
-                Text("Preview")
-                    .font(.caption2)
-            }
-            .frame(width: 60, height: 50)
-            .background(Color(.systemGray5))
-            .cornerRadius(8)
-            .foregroundColor(.primary)
-            .onTapGesture {
-                print("Preview tapped")
-                showingEmailPreview = true
-            }
-            .padding(.horizontal, 4)
-            
-            // Add "button" (actually a view with gesture)
-            Group {
-                if isAlreadyAdded {
-                    VStack(spacing: 2) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16))
-                        Text("Added")
-                            .font(.caption2)
+            // Action buttons
+            HStack(spacing: 4) {
+                // Preview button
+                VStack(spacing: 2) {
+                    Image(systemName: "envelope.open")
+                        .font(.system(size: 14))
+                    Text("Preview")
+                        .font(.caption2)
+                }
+                .frame(width: 50, height: 45)
+                .background(Color(.systemGray5))
+                .cornerRadius(8)
+                .foregroundColor(.primary)
+                .onTapGesture {
+                    showingEmailPreview = true
+                }
+                
+                // Add button
+                Group {
+                    if isAlreadyAdded {
+                        VStack(spacing: 2) {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14))
+                            Text("Added")
+                                .font(.caption2)
+                        }
+                        .frame(width: 50, height: 45)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(8)
+                        .foregroundColor(.green)
+                    } else {
+                        VStack(spacing: 2) {
+                            Image(systemName: isAdding ? "hourglass" : "plus")
+                                .font(.system(size: 14))
+                            Text(isAdding ? "..." : "Add")
+                                .font(.caption2)
+                        }
+                        .frame(width: 50, height: 45)
+                        .background(isAdding ? Color.gray : Color.blue)
+                        .cornerRadius(8)
+                        .foregroundColor(.white)
+                        .onTapGesture {
+                            addToReturns()
+                        }
+                        .opacity(isAdding ? 0.7 : 1.0)
                     }
-                    .frame(width: 60, height: 50)
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(8)
-                    .foregroundColor(.green)
-                } else {
-                    VStack(spacing: 2) {
-                        Image(systemName: isAdding ? "hourglass" : "plus")
-                            .font(.system(size: 16))
-                        Text(isAdding ? "..." : "Add")
-                            .font(.caption2)
-                    }
-                    .frame(width: 60, height: 50)
-                    .background(isAdding ? Color.gray : Color.blue)
-                    .cornerRadius(8)
-                    .foregroundColor(.white)
-                    .onTapGesture {
-                        print("Add tapped")
-                        addToReturns()
-                    }
-                    .opacity(isAdding ? 0.7 : 1.0)
+                }
+                
+                // Hide button
+                VStack(spacing: 2) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14))
+                    Text("Hide")
+                        .font(.caption2)
+                }
+                .frame(width: 50, height: 45)
+                .background(Color.red.opacity(0.8))
+                .cornerRadius(8)
+                .foregroundColor(.white)
+                .onTapGesture {
+                    showingHideConfirmation = true
                 }
             }
-            .padding(.horizontal, 4)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
+        .alert("Hide Email?", isPresented: $showingHideConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Hide", role: .destructive) {
+                hideEmail()
+            }
+        } message: {
+            Text("This email will be hidden from future scans. You can show it again from the Options menu.")
+        }
         .sheet(isPresented: $showingEmailPreview) {
             EmailPreviewView(potentialReturn: potentialReturn)
         }
@@ -302,6 +377,15 @@ struct PotentialReturnRow: View {
         
         // Store the emailId so the app remembers this item has been added
         UserDefaults.standard.set(true, forKey: "added_\(potentialReturn.emailId)")
+    }
+    
+    private func hideEmail() {
+        EmailFilterManager.shared.hideEmail(potentialReturn.emailId)
+        
+        // Trigger immediate UI refresh with animation
+        withAnimation(.easeOut(duration: 0.3)) {
+            onHideEmail()
+        }
     }
 }
     
