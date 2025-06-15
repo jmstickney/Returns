@@ -194,6 +194,16 @@ struct ReturnsListView: View {
                     print("📢 Received onboarding completed notification")
                     tutorialManager.startTutorialWhenReady()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openGmailIntegration)) { _ in
+                    // Open Gmail integration when notification is tapped
+                    print("📢 Opening Gmail integration from notification")
+                    isShowingGmailIntegration = true
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .refreshReturnsList)) { _ in
+                    // Refresh the returns list when requested
+                    print("📢 Refreshing returns list")
+                    // The view will automatically refresh since it's bound to viewModel
+                }
                 .onChange(of: tutorialManager.currentStep) { step in
                     // Control button animations based on tutorial step
                     updateButtonAnimations()
