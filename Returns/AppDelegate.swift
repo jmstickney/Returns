@@ -17,8 +17,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("All Info.plist keys: \(Bundle.main.infoDictionary?.keys.joined(separator: ", ") ?? "none")")
         print("Shippo API Key: \(Bundle.main.object(forInfoDictionaryKey: "ShippoAPIKey") ?? "not found")")
         
+        #if DEBUG
         // SEND LAUNCH NOTIFICATION TO VERIFY APPDELEGATE IS CONNECTED
         sendBackgroundDebugNotification("🚀 AppDelegate Launched", body: "AppDelegate didFinishLaunching was called")
+        #endif
         
         // Set the notification delegate
         UNUserNotificationCenter.current().delegate = self
@@ -66,8 +68,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func applicationDidEnterBackground(_ application: UIApplication) {
         print("📱 APPDELEGATE: App entered background - manual scheduling disabled")
         
+        #if DEBUG
         // SEND IMMEDIATE NOTIFICATION TO CONFIRM THIS METHOD IS CALLED
         sendBackgroundDebugNotification("📱 AppDelegate Background", body: "applicationDidEnterBackground was called (manual scheduling handled by ReturnsApp)")
+        #endif
         
         // REMOVED: scheduleAppRefresh() - now handled by ReturnsApp
     }
@@ -75,8 +79,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func applicationWillEnterForeground(_ application: UIApplication) {
         print("📱 APPDELEGATE: App entering foreground")
         
+        #if DEBUG
         // SEND NOTIFICATION TO CONFIRM THIS METHOD IS CALLED
         sendBackgroundDebugNotification("📱 AppDelegate Foreground", body: "applicationWillEnterForeground was called")
+        #endif
         
         // REMOVED: checkPendingBackgroundTasks() - now handled by ReturnsApp
     }
@@ -97,14 +103,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             try BGTaskScheduler.shared.submit(request)
             print("✅ Background refresh task scheduled for: \(request.earliestBeginDate ?? Date())")
             
+            #if DEBUG
             // SEND IMMEDIATE NOTIFICATION TO CONFIRM SCHEDULING
             sendBackgroundDebugNotification("📅 Background Task Scheduled",
                                            body: "Next execution: \(DateFormatter.timeFormatter.string(from: request.earliestBeginDate ?? Date()))")
+            #endif
             
         } catch {
             print("❌ Could not schedule app refresh: \(error)")
+            
+            #if DEBUG
             sendBackgroundDebugNotification("❌ Background Task Failed",
                                            body: "Error: \(error.localizedDescription)")
+            #endif
             
             // Log specific error types for debugging
             if let bgError = error as? BGTaskScheduler.Error {
@@ -138,9 +149,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     private func handleAppRefresh(task: BGAppRefreshTask) {
         print("🔄 EXECUTING BACKGROUND TASK: \(Date())")
         
+        #if DEBUG
         // SEND IMMEDIATE NOTIFICATION THAT BACKGROUND TASK STARTED
         sendBackgroundDebugNotification("🚀 Background Task Started",
                                        body: "iOS granted background execution time")
+        #endif
         
         // IMPORTANT: Schedule the next background refresh FIRST
         scheduleAppRefresh()
@@ -148,8 +161,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Set expiration handler
         task.expirationHandler = {
             print("⏰ Background task expired - time limit reached")
+            
+            #if DEBUG
             self.sendBackgroundDebugNotification("⏰ Background Task Expired",
                                                body: "iOS time limit reached")
+            #endif
+            
             task.setTaskCompleted(success: false)
         }
         
@@ -158,9 +175,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             self.performBackgroundUpdates { success in
                 print("📊 Background updates completed: \(success ? "✅ SUCCESS" : "❌ FAILED")")
                 
+                #if DEBUG
                 // SEND COMPLETION NOTIFICATION
                 self.sendBackgroundDebugNotification("📊 Background Task Complete",
                                                    body: success ? "Updates successful" : "Updates failed")
+                #endif
                 
                 task.setTaskCompleted(success: success)
             }
@@ -451,8 +470,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
     }
     
-    // MARK: - Debug Notification Helper
+    // MARK: - Debug Notification Helpers
     
+    #if DEBUG
     private func sendBackgroundDebugNotification(_ title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -480,8 +500,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
     }
-    
-    // MARK: - Test Notification Helper
     
     private func sendTestNotification(_ title: String, body: String) {
         let content = UNMutableNotificationContent()
@@ -514,6 +532,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             }
         }
     }
+    #else
+    // Production stubs - do nothing
+    private func sendBackgroundDebugNotification(_ title: String, body: String) {}
+    private func sendTestNotification(_ title: String, body: String) {}
+    #endif
     
     // MARK: - Debug Methods (Development Only)
     
