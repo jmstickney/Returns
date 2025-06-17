@@ -163,9 +163,11 @@ struct ReturnsListView: View {
                         .scaleEffect(animateAddButton ? 1.1 : 1.0)
                         .animation(animateAddButton ? .easeInOut(duration: 1).repeatForever(autoreverses: true) : .default, value: animateAddButton)
                     }
+                    #if DEBUG
                     ToolbarItem(placement: .navigationBarLeading) {
                             NavigationLink("🧪", destination: BackgroundTestView())
                         }
+                    #endif
                     
                     ToolbarItem(placement: .navigationBarLeading) {
                         EditButton()
